@@ -1,4 +1,5 @@
 {
   "1486fe46ffe43f933c2fe3e8dc89b38ff5b97d87a258ad6a8ec4b736a648e2da07dabdbc32a9ac9e6558ec30a9a7fa6aec64dc00a738db90487417f5153740c9", -- Door
   "7a05bce66d613531975ca4cca2ec349f50159f4e", -- Dorblx, New system
+  "8aba420e92846eefca75c6737b070d4df6986f59", -- Rethix, New System
 }

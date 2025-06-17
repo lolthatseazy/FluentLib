@@ -1,3 +1,5 @@
+--!nonstrict
+
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 local GUIParent = gethui and gethui() or game:GetService("CoreGui")
 
@@ -23,11 +25,11 @@ if RunService:IsStudio() then
 	isfile = writefile
 	isfolder = writefile
 	makefolder = writefile
-	
+
 	readfile = function()
 		return ""
 	end
-	
+
 	identifyexecutor = function()
 		return "RobloxStudio", Version()
 	end
@@ -35,14 +37,20 @@ end
 
 NormalCreator = (function(...)
 	local RenderStepped = RunService.Heartbeat
-	
+
 	local Icons
 	if RunService:IsStudio() then
 		Icons = require(script.Icons)
 	else
-		Icons = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua"))()
+		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua"))
+		if type(IconsFunction) == "function" then
+			Icons = IconsFunction()
+		else
+			LocalPlayer:Kick("[WindUI]: Failed to load icons (Check Console for more info).")
+			return warn(LoadError)
+		end
 	end
-	
+
 	Icons.SetIconsType("lucide")
 
 	local Creator = {
@@ -356,7 +364,7 @@ NormalCreator = (function(...)
 
 		return DragModule
 	end
-	
+
 	function Creator.GetImageExtension(ImageContent)
 		if type(ImageContent) ~= "string" then return end
 		local WaterMark = ImageContent:sub(0, 4)
@@ -412,7 +420,7 @@ NormalCreator = (function(...)
 				Hash += Letter:byte() * Indx
 				Indx += 1
 			end)
-			
+
 			local FileName = "WindUI/.Assets/" .. tostring(Hash)
 			local success, response = pcall(function()
 				for _, Extension in ipairs(Creator.ValidExtensions) do
@@ -422,12 +430,12 @@ NormalCreator = (function(...)
 						return
 					end
 				end
-				
+
 				local response = Creator.Request({
 					Url = Img,
 					Method = "GET",
 				}).Body
-				
+
 				local AssetExtension = Creator.GetImageExtension(response)
 				if not AssetExtension then
 					return warn("[ WindUI.Creator ] File type not supported (Unknow type). Body: " .. response:sub(0, 4))
@@ -771,7 +779,7 @@ NormalUI = (function(...)
 
 		return table.concat(highlighted)
 	end
-	
+
 	local UIComponents = {}
 
 	local Creator = NormalCreator
@@ -1411,16 +1419,14 @@ NormalUI = (function(...)
 			end
 		end)
 
-		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteWindowSize"), function()
+		local UpdateSizeAndPos = function()
 			updateSliderSize()
 			updateThumbPosition()
-		end)
+		end
 
-		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteCanvasSize"), function()
-			updateSliderSize()
-			updateThumbPosition()
-		end)
-
+		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteWindowSize"), UpdateSizeAndPos)
+		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteCanvasSize"), UpdateSizeAndPos)
+		
 		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"), function()
 			if not isDragging then
 				updateThumbPosition()
@@ -2649,9 +2655,7 @@ function Notify.New(Config)
 	end)
 
 	if CloseButton then
-		Creator.AddSignal(CloseButton.TextButton.MouseButton1Click, function()
-			Notification:Close()
-		end)
+		Creator.AddSignal(CloseButton.TextButton.MouseButton1Click, Notification.Close)
 	end
 
 	--Tween():Play()
@@ -3286,9 +3290,9 @@ function WindUI:CreateWindow(Config)
 		local OpenButton = nil
 		local OpenButtonIcon = nil
 		local Glow = nil
-		
+
 		local OpenButtonTitle, OpenButtonDrag, OpenButtonDivider
-		
+
 		do
 			OpenButtonIcon = New("ImageLabel", {
 				Image = "",
@@ -3407,7 +3411,7 @@ function WindUI:CreateWindow(Config)
 
 
 			Creator.AddSignal(RunService.RenderStepped, function(deltaTime)
-				if Window.UIElements.Main and OpenButtonContainer and OpenButtonContainer.Parent ~= nil then
+				if rawget(Window.UIElements, "Main") and OpenButtonContainer and OpenButtonContainer.Parent ~= nil then
 					if uiGradient then
 						uiGradient.Rotation = (uiGradient.Rotation + 1) % 360
 					end
@@ -3478,7 +3482,7 @@ function WindUI:CreateWindow(Config)
 						BackgroundTransparency = 1,
 					}, {
 						New("TextLabel", {
-							Text = Window.User.Anonymous and "Anonymous" or LocalPlayer.DisplayName,
+							Text = Window.User.Anonymous and "Anonymous" or Window.User.DisplayName or LocalPlayer.DisplayName,
 							TextSize = 17,
 							ThemeTag = {
 								TextColor3 = "Text",
@@ -3491,7 +3495,7 @@ function WindUI:CreateWindow(Config)
 							TextXAlignment = "Left",
 						}),
 						New("TextLabel", {
-							Text = Window.User.Anonymous and "@anonymous" or "@" .. LocalPlayer.Name,
+							Text = Window.User.Anonymous and "@anonymous" or Window.User.Name or "@" .. LocalPlayer.Name,
 							TextSize = 15,
 							TextTransparency = .6,
 							ThemeTag = {
@@ -3522,9 +3526,7 @@ function WindUI:CreateWindow(Config)
 			})
 
 			if Window.User.Callback then
-				Creator.AddSignal(UserIcon.MouseButton1Click, function()
-					Window.User.Callback()
-				end)
+				Creator.AddSignal(UserIcon.MouseButton1Click, Window.User.Callback)
 				Creator.AddSignal(UserIcon.MouseEnter, function()
 					Tween(UserIcon.UserIcon, 0.04, {ImageTransparency = .94}):Play()
 				end)
@@ -3755,9 +3757,7 @@ function WindUI:CreateWindow(Config)
 				Object = Button
 			}
 
-			Creator.AddSignal(Button.MouseButton1Click, function()
-				Callback()
-			end)
+			Creator.AddSignal(Button.MouseButton1Click, Callback)
 			Creator.AddSignal(Button.MouseEnter, function()
 				Tween(Button, .15, {BackgroundTransparency = .93}):Play()
 				Tween(Button.ImageLabel, .15, {ImageTransparency = 0}):Play()
@@ -3901,6 +3901,117 @@ function WindUI:CreateWindow(Config)
 		local iconCopy = Creator.Icon("minimize")
 		local iconSquare = Creator.Icon("maximize")
 
+		local StartTime = 0
+		function Window:Open()
+			local ActualTime = tick()
+			if ActualTime - StartTime < 0.75 then return end
+			StartTime = ActualTime
+
+			task.spawn(pcall, function()
+				task.wait(.06)
+				Window.Closed = false
+
+				Tween(Window.UIElements.Main.Background, 0.2, {
+					ImageTransparency = Config.Transparent and Config.WindUI.TransparencyValue or 0,
+				}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+
+				Tween(Window.UIElements.Main.Background, 0.4, {
+					Size = UDim2.new(1,0,1,0),
+				}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
+
+				Tween(Window.UIElements.Main.Background.ImageLabel, 0.2, {ImageTransparency = Window.BackgroundImageTransparency}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+				--Tween(Window.UIElements.Main.Background.UIScale, 0.2, {Scale = 1}, Enum.EasingStyle.Back, Enum.EasingDirection.Out):Play()
+				Tween(Blur, 0.25, {ImageTransparency = .7}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+				if UIStroke then
+					Tween(UIStroke, 0.25, {Transparency = .8}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+				end
+
+				task.spawn(function()
+					task.wait(.5)
+					Tween(BottomDragFrame, .45, {Size = UDim2.new(0,200,0,4), ImageTransparency = .8}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
+					Tween(ResizeHandle.ImageLabel, .45, {ImageTransparency = .8}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
+					task.wait(.45)
+					WindowDragModule:Set(true)
+					Window.CanResize = true
+				end)
+
+
+				Window.CanDropdown = true
+
+				Window.UIElements.Main.Visible = true
+				task.spawn(function()
+					task.wait(.19)
+					Window.UIElements.Main.Main.Visible = true
+				end)
+			end)
+		end
+
+		function Window:Close(...)
+			local Pack = table.pack(...)
+			if Pack.n ~= 3 or #Pack ~= 0 then
+				local ActualTime = tick()
+				if ActualTime - StartTime < 0.75 then return end
+				StartTime = ActualTime
+			end
+
+			local Close = {}
+
+			if not Window.UIElements.Main then
+				return
+			elseif not Window.UIElements.Main:FindFirstChild("Main") then
+				return
+			end
+
+			if Window.OnCloseCallback then
+				task.spawn(function()
+					Creator.SafeCallback(Window.OnCloseCallback)
+				end)
+			end
+
+			Window.UIElements.Main.Main.Visible = false
+			Window.CanDropdown = false
+			Window.Closed = true
+
+			Tween(Window.UIElements.Main.Background, 0.32, {
+				ImageTransparency = 1,
+			}, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
+
+			Tween(Window.UIElements.Main.Background, 0.4, {
+				Size = UDim2.new(1,0,1,-240),
+			}, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut):Play()
+
+			--Tween(Window.UIElements.Main.Background.UIScale, 0.19, {Scale = .95}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+			Tween(Window.UIElements.Main.Background.ImageLabel, 0.2, {ImageTransparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+			Tween(Blur, 0.25, {ImageTransparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+			if UIStroke then
+				Tween(UIStroke, 0.25, {Transparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+			end
+
+			Tween(BottomDragFrame, .3, {Size = UDim2.new(0,0,0,4), ImageTransparency = 1}, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut):Play()
+			Tween(ResizeHandle.ImageLabel, .3, {ImageTransparency = 1}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
+			WindowDragModule:Set(false)
+			Window.CanResize = false
+
+			task.spawn(function()
+				task.wait(0.4)
+				Window.UIElements.Main.Visible = false
+			end)
+
+			function Close:Destroy()
+				if Window.OnDestroyCallback then
+					task.spawn(function()
+						Creator.SafeCallback(Window.OnDestroyCallback)
+					end)
+				end
+				Window.Destroyed = true
+				task.wait(0.4)
+				Config.Parent.Parent:Destroy()
+
+				--Creator.DisconnectAll()
+			end
+
+			return Close
+		end
 
 		local FullscreenButton
 
@@ -3963,118 +4074,6 @@ function WindUI:CreateWindow(Config)
 			Window.OnDestroyCallback = func
 		end
 		
-		local StartTime = 0
-		function Window:Open()
-			local ActualTime = tick()
-			if ActualTime - StartTime < 0.75 then return end
-			StartTime = ActualTime
-			
-			task.spawn(pcall, function()
-				task.wait(.06)
-				Window.Closed = false
-
-				Tween(Window.UIElements.Main.Background, 0.2, {
-					ImageTransparency = Config.Transparent and Config.WindUI.TransparencyValue or 0,
-				}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-
-				Tween(Window.UIElements.Main.Background, 0.4, {
-					Size = UDim2.new(1,0,1,0),
-				}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
-
-				Tween(Window.UIElements.Main.Background.ImageLabel, 0.2, {ImageTransparency = Window.BackgroundImageTransparency}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-				--Tween(Window.UIElements.Main.Background.UIScale, 0.2, {Scale = 1}, Enum.EasingStyle.Back, Enum.EasingDirection.Out):Play()
-				Tween(Blur, 0.25, {ImageTransparency = .7}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-				if UIStroke then
-					Tween(UIStroke, 0.25, {Transparency = .8}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-				end
-
-				task.spawn(function()
-					task.wait(.5)
-					Tween(BottomDragFrame, .45, {Size = UDim2.new(0,200,0,4), ImageTransparency = .8}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
-					Tween(ResizeHandle.ImageLabel, .45, {ImageTransparency = .8}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
-					task.wait(.45)
-					WindowDragModule:Set(true)
-					Window.CanResize = true
-				end)
-
-
-				Window.CanDropdown = true
-
-				Window.UIElements.Main.Visible = true
-				task.spawn(function()
-					task.wait(.19)
-					Window.UIElements.Main.Main.Visible = true
-				end)
-			end)
-		end
-		
-		function Window:Close(...)
-			local Pack = table.pack(...)
-			if Pack.n ~= 3 or #Pack ~= 0 then
-				local ActualTime = tick()
-				if ActualTime - StartTime < 0.75 then return end
-				StartTime = ActualTime
-			end
-			
-			local Close = {}
-			
-			if not Window.UIElements.Main then
-				return
-			elseif not Window.UIElements.Main:FindFirstChild("Main") then
-				return
-			end
-			
-			if Window.OnCloseCallback then
-				task.spawn(function()
-					Creator.SafeCallback(Window.OnCloseCallback)
-				end)
-			end
-
-			Window.UIElements.Main.Main.Visible = false
-			Window.CanDropdown = false
-			Window.Closed = true
-
-			Tween(Window.UIElements.Main.Background, 0.32, {
-				ImageTransparency = 1,
-			}, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut):Play()
-
-			Tween(Window.UIElements.Main.Background, 0.4, {
-				Size = UDim2.new(1,0,1,-240),
-			}, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut):Play()
-
-			--Tween(Window.UIElements.Main.Background.UIScale, 0.19, {Scale = .95}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-			Tween(Window.UIElements.Main.Background.ImageLabel, 0.2, {ImageTransparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-			Tween(Blur, 0.25, {ImageTransparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-			if UIStroke then
-				Tween(UIStroke, 0.25, {Transparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-			end
-
-			Tween(BottomDragFrame, .3, {Size = UDim2.new(0,0,0,4), ImageTransparency = 1}, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut):Play()
-			Tween(ResizeHandle.ImageLabel, .3, {ImageTransparency = 1}, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out):Play()
-			WindowDragModule:Set(false)
-			Window.CanResize = false
-
-			task.spawn(function()
-				task.wait(0.4)
-				Window.UIElements.Main.Visible = false
-			end)
-
-			function Close:Destroy()
-				if Window.OnDestroyCallback then
-					task.spawn(function()
-						Creator.SafeCallback(Window.OnDestroyCallback)
-					end)
-				end
-				Window.Destroyed = true
-				task.wait(0.4)
-				Config.Parent.Parent:Destroy()
-
-				--Creator.DisconnectAll()
-			end
-
-			return Close
-		end
-
 		function Window:ToggleTransparency(Value)
 			-- Config.Transparent = Value
 			Window.Transparent = Value
@@ -4530,6 +4529,7 @@ function WindUI:CreateWindow(Config)
 							Value = Config.Value,
 							Icon = Config.Icon or nil,
 							Type = Config.Type or "Toggle",
+							Locked = Config.Locked or false,
 							Callback = Config.Callback or function() end,
 							UIElements = {}
 						}
@@ -4551,8 +4551,6 @@ function WindUI:CreateWindow(Config)
 						if Toggle.Value == nil then
 							Toggle.Value = false
 						end
-
-
 
 						function Toggle:Lock()
 							CanCallback = false
@@ -4958,9 +4956,20 @@ function WindUI:CreateWindow(Config)
 							Hover = false,
 						})
 
-						local InputComponent = CreateInput(Input.PlaceholderText, Input.InputIcon, Input.InputFrame.UIElements.Container, Input.Type, function(v)
+						local InputComponent
+						function Input:Set(v)
+							if CanCallback then
+								Creator.SafeCallback(Input.Callback, v)
+
+								InputComponent.Frame.Frame.TextBox.Text = v
+								Input.Value = v
+							end
+						end
+
+						InputComponent = CreateInput(Input.PlaceholderText, Input.InputIcon, Input.InputFrame.UIElements.Container, Input.Type, function(v)
 							Input:Set(v)
 						end)
+						
 						InputComponent.Size = UDim2.new(1,0,0,Input.Type == "Input" and 42 or 42+56+50)
 
 						New("UIScale", {
@@ -4975,16 +4984,6 @@ function WindUI:CreateWindow(Config)
 						function Input:Unlock()
 							CanCallback = true
 							return Input.InputFrame:Unlock()
-						end
-
-
-						function Input:Set(v)
-							if CanCallback then
-								Creator.SafeCallback(Input.Callback, v)
-
-								InputComponent.Frame.Frame.TextBox.Text = v
-								Input.Value = v
-							end
 						end
 
 						Input:Set(Input.Value)
@@ -5433,6 +5432,7 @@ function WindUI:CreateWindow(Config)
 							__type = "Code",
 							Title = Config.Title,
 							Code = Config.Code,
+							Locked = Config.Locked or false,
 							UIElements = {}
 						}
 
@@ -6438,7 +6438,7 @@ function WindUI:CreateWindow(Config)
 				TabModuleMain.OnChangeFunc(TabIndex)
 			end
 		end
-		
+
 		local TabModule = TabModuleMain.Init(Window, Config.WindUI, Config.Parent.Parent.ToolTips, TabHighlight)
 		TabModule:OnChange(function(t) Window.CurrentTab = t end)
 
@@ -7106,6 +7106,25 @@ function WindUI:CreateWindow(Config)
 					end
 					return results
 				end
+				
+				function SearchBarModule:Open()
+					task.spawn(function()
+						SearchFrame.Frame.Visible = true
+						SearchFrameContainer.Visible = true
+						Tween(SearchFrameContainer.UIScale, .12, {Scale = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+					end)
+				end
+
+				function SearchBarModule:Close()
+					task.spawn(function()
+						OnClose()
+						SearchFrame.Frame.Visible = false
+						Tween(SearchFrameContainer.UIScale, .12, {Scale = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
+
+						task.wait(.12)
+						SearchFrameContainer.Visible = false
+					end)
+				end
 
 				function SearchBarModule:Search(query)
 					query = query or ""
@@ -7180,25 +7199,6 @@ function WindUI:CreateWindow(Config)
 					-- )
 				end)
 
-				function SearchBarModule:Open()
-					task.spawn(function()
-						SearchFrame.Frame.Visible = true
-						SearchFrameContainer.Visible = true
-						Tween(SearchFrameContainer.UIScale, .12, {Scale = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-					end)
-				end
-
-				function SearchBarModule:Close()
-					task.spawn(function()
-						OnClose()
-						SearchFrame.Frame.Visible = false
-						Tween(SearchFrameContainer.UIScale, .12, {Scale = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out):Play()
-
-						task.wait(.12)
-						SearchFrameContainer.Visible = false
-					end)
-				end
-
 				Creator.AddSignal(CloseButton.TextButton.MouseButton1Click, function()
 					SearchBarModule:Close()
 				end)
@@ -7207,7 +7207,7 @@ function WindUI:CreateWindow(Config)
 
 				return SearchBarModule
 			end
-			
+
 			local IsOpen = false
 			local CurrentSearchBar
 
@@ -7268,7 +7268,7 @@ function WindUI:CreateWindow(Config)
 
 		return Window
 	end
-	
+
 	if not isfolder("WindUI") then
 		makefolder("WindUI")
 	end

@@ -40,7 +40,12 @@ NormalCreator = (function(...)
 
 	local Icons
 	if RunService:IsStudio() then
-		Icons = require(script.Icons)
+		local ExternalIcons = script:FindFirstChild("Icons") :: ModuleScript
+		if ExternalIcons and ExternalIcons:IsA("ModuleScript") then
+			Icons = require(ExternalIcons)
+		else
+			return error("[WindUI]: Failed to find Icons Lib")
+		end
 	else
 		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua"))
 		if type(IconsFunction) == "function" then
@@ -127,8 +132,7 @@ NormalCreator = (function(...)
 	function Creator.Init(WindUI)
 		Creator.WindUI = WindUI
 	end
-
-
+	
 	function Creator.AddSignal(Signal, Function)
 		table.insert(Creator.Signals, Signal:Connect(Function))
 	end
@@ -380,7 +384,7 @@ NormalCreator = (function(...)
 		end
 	end
 
-	function Creator.Image(Img, Name, Corner, Folder, Type, IsThemeTag, Themed)
+	function Creator.Image(CustomSize, Img, Name, Corner, Folder, Type, IsThemeTag, Themed)
 		local function SanitizeFilename(str)
 			str = str:gsub("[%s/\\:*?\"<>|]+", "-")
 			str = str:gsub("[^%w%-_%.]", "")
@@ -395,7 +399,9 @@ NormalCreator = (function(...)
 			BackgroundTransparency = 1,
 		}, {
 			New("ImageLabel", {
-				Size = UDim2.new(1,0,1,0),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Size = CustomSize or UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				ScaleType = "Crop",
 				ThemeTag = (Creator.Icon(Img) or Themed) and {
@@ -1181,11 +1187,9 @@ NormalUI = (function(...)
 				end
 			end
 
-			task.spawn(function()
-				if Callback then
-					Creator.SafeCallback(Callback, Toggled)
-				end
-			end)
+			if Callback then
+				task.spawn(Creator.SafeCallback, Callback, Toggled)
+			end
 
 			--Toggled = not Toggled
 		end
@@ -1267,12 +1271,10 @@ NormalUI = (function(...)
 					ImageTransparency = 1,
 				}):Play()
 			end
-
-			task.spawn(function()
-				if Callback then
-					Creator.SafeCallback(Callback, Toggled)
-				end
-			end)
+			
+			if Callback then
+				task.spawn(Creator.SafeCallback, Callback, Toggled)
+			end
 		end
 
 		return CheckboxFrame, Checkbox
@@ -1789,6 +1791,7 @@ NormalElement = (function()
 		local ImageFrame
 		if Element.Thumbnail then
 			ThumbnailFrame = Creator.Image(
+				false,
 				Element.Thumbnail, 
 				Element.Title, 
 				Element.UICorner-3, 
@@ -1801,6 +1804,7 @@ NormalElement = (function()
 		end
 		if Element.Image then
 			ImageFrame = Creator.Image(
+				false,
 				Element.Image, 
 				Element.Title, 
 				Element.UICorner-3, 
@@ -2115,6 +2119,7 @@ function KeySystem.new(Config, Filename, func)
 		-- end
 
 		IconFrame = Creator.Image(
+			Config.IconSize,
 			Config.Icon,
 			Config.Title .. ":" .. Config.Icon,
 			0,
@@ -2441,6 +2446,7 @@ function Notify.New(Config)
 		Title = Config.Title or "Notification",
 		Content = Config.Content or nil,
 		Icon = Config.Icon or nil,
+		IconSize = Config.IconSize or nil,
 		IconThemed = Config.IconThemed,
 		Background = Config.Background,
 		BackgroundImageTransparency = Config.BackgroundImageTransparency,
@@ -2493,6 +2499,7 @@ function Notify.New(Config)
 		-- end
 
 		Icon = Creator.Image(
+			Notification.IconSize,
 			Notification.Icon,
 			Notification.Title .. ":" .. Notification.Icon,
 			0,
@@ -2725,6 +2732,7 @@ function WindUI:Popup(PopupConfig)
 			Title = PopupConfig.Title or "Dialog",
 			Content = PopupConfig.Content,
 			Icon = PopupConfig.Icon,
+			IconSize = PopupConfig.IconSize,
 			IconThemed = PopupConfig.IconThemed,
 			Thumbnail = PopupConfig.Thumbnail,
 			Buttons = PopupConfig.Buttons
@@ -2749,6 +2757,7 @@ function WindUI:Popup(PopupConfig)
 
 		if Popup.Icon then
 			IconFrame = Creator.Image(
+				Popup.IconSize,
 				Popup.Icon,
 				Popup.Title .. ":" .. Popup.Icon,
 				0,
@@ -3046,15 +3055,12 @@ function WindUI:CreateWindow(Config)
 
 			for name, data in next, loadData.Elements do
 				if ConfigModule.Elements[name] and ConfigManager.Parser[data.__type] then
-					task.spawn(function()
-						ConfigManager.Parser[data.__type].Load(ConfigModule.Elements[name], data)
-					end)
+					task.spawn(ConfigManager.Parser[data.__type].Load, ConfigModule.Elements[name], data)
 				end
 			end
 
 		end
-
-
+		
 		ConfigManager.Configs[configFilename] = ConfigModule
 
 		return ConfigModule
@@ -3066,6 +3072,8 @@ function WindUI:CreateWindow(Config)
 			Title = Config.Title or "UI Library",
 			Author = Config.Author,
 			Icon = Config.Icon,
+			IconSize = Config.IconSize,
+			IconFrameSize = Config.IconFrameSize,
 			IconThemed = Config.IconThemed,
 			Folder = Config.Folder,
 			Background = Config.Background,
@@ -3074,7 +3082,7 @@ function WindUI:CreateWindow(Config)
 			Size = Config.Size and UDim2.new(
 				0, math.clamp(Config.Size.X.Offset, 480, 700),
 				0, math.clamp(Config.Size.Y.Offset, 350, 520)) or UDim2.new(0,580,0,460),
-			ToggleKey = Config.ToggleKey or Enum.KeyCode.G,
+			ToggleKey = Config.ToggleKey or Enum.KeyCode.LeftControl,
 			Transparent = Config.Transparent or false,
 			HideSearchBar = Config.HideSearchBar or false,
 			ScrollBarEnabled = Config.ScrollBarEnabled or false,
@@ -3116,9 +3124,7 @@ function WindUI:CreateWindow(Config)
 		})
 
 		Window.ConfigManager = ConfigManager:Init(Window)
-
-
-
+		
 		local ResizeHandle = New("Frame", {
 			Size = UDim2.new(0,32,0,32),
 			Position = UDim2.new(1,0,1,0),
@@ -3859,6 +3865,7 @@ function WindUI:CreateWindow(Config)
 				-- else
 
 				local ImageFrame = Creator.Image(
+					Window.IconSize,
 					Window.Icon,
 					Window.Title,
 					0,
@@ -3868,7 +3875,7 @@ function WindUI:CreateWindow(Config)
 					Window.IconThemed
 				)
 				ImageFrame.Parent = Window.UIElements.Main.Main.Topbar.Left
-				ImageFrame.Size = UDim2.new(0,22,0,22)
+				ImageFrame.Size = Window.IconFrameSize or UDim2.new(0,22,0,22)
 
 				if Creator.Icon(tostring(Window.Icon)) and Creator.Icon(tostring(Window.Icon))[1] then
 					-- ImageLabel.Image = Creator.Icon(Window.Icon)[1]
@@ -3963,9 +3970,7 @@ function WindUI:CreateWindow(Config)
 			end
 
 			if Window.OnCloseCallback then
-				task.spawn(function()
-					Creator.SafeCallback(Window.OnCloseCallback)
-				end)
+				task.spawn(Creator.SafeCallback, Window.OnCloseCallback)
 			end
 
 			Window.UIElements.Main.Main.Visible = false
@@ -3999,9 +4004,7 @@ function WindUI:CreateWindow(Config)
 
 			function Close:Destroy()
 				if Window.OnDestroyCallback then
-					task.spawn(function()
-						Creator.SafeCallback(Window.OnDestroyCallback)
-					end)
+					task.spawn(Creator.SafeCallback, Window.OnDestroyCallback)
 				end
 				Window.Destroyed = true
 				task.wait(0.4)
@@ -4105,10 +4108,7 @@ function WindUI:CreateWindow(Config)
 			end
 		end)
 
-		task.spawn(function()
-			--task.wait(1.38583)
-			Window:Open()
-		end)
+		task.spawn(Window.Open, Window)
 
 		function Window:EditOpenButton(OpenButtonConfig)
 			-- fuck
@@ -4214,6 +4214,7 @@ function WindUI:CreateWindow(Config)
 				Title = Config.Title or "Tab",
 				Desc = Config.Desc,
 				Icon = Config.Icon,
+				IconSize = Config.IconSize,
 				IconThemed = Config.IconThemed,
 				Locked = Config.Locked,
 				ShowTabTitle = Config.ShowTabTitle,
@@ -4276,6 +4277,7 @@ function WindUI:CreateWindow(Config)
 
 			if Tab.Icon then
 				Icon = Creator.Image(
+					Tab.IconSize,
 					Tab.Icon,
 					Tab.Icon .. ":" .. Tab.Title,
 					0,
@@ -4500,9 +4502,7 @@ function WindUI:CreateWindow(Config)
 
 						Creator.AddSignal(Button.ButtonFrame.UIElements.Main.MouseButton1Click, function()
 							if CanCallback then
-								task.spawn(function()
-									Creator.SafeCallback(Button.Callback)
-								end)
+								task.spawn(Creator.SafeCallback, Button.Callback)
 							end
 						end)
 						return Button.__type, Button
@@ -5180,8 +5180,6 @@ function WindUI:CreateWindow(Config)
 							)
 						end
 
-
-
 						function Dropdown:Display()
 							local Values = Dropdown.Values
 							local Str = ""
@@ -5285,9 +5283,7 @@ function WindUI:CreateWindow(Config)
 
 								local function Callback()
 									Dropdown:Display()
-									task.spawn(function()
-										Creator.SafeCallback(Dropdown.Callback, Dropdown.Value)
-									end)
+									task.spawn(Creator.SafeCallback, Dropdown.Callback, Dropdown.Value)
 								end
 
 								Creator.AddSignal(TabMain.UIElements.TabItem.MouseButton1Click, function()
@@ -5414,6 +5410,8 @@ function WindUI:CreateWindow(Config)
 						end)
 
 						Creator.AddSignal(Dropdown.UIElements.Dropdown:GetPropertyChangedSignal("AbsolutePosition"), UpdatePosition)
+
+						task.spawn(Creator.SafeCallback, Dropdown.Callback, Dropdown.Value)
 
 						return Dropdown.__type, Dropdown
 					end
@@ -6163,6 +6161,7 @@ function WindUI:CreateWindow(Config)
 							__type = "Section",
 							Title = Config.Title or "Section",
 							Icon = Config.Icon,
+							IconSize = Config.IconSize,
 							TextXAlignment = Config.TextXAlignment or "Left",
 							TextSize = Config.TextSize or 19,
 							UIElements = {},
@@ -6171,6 +6170,7 @@ function WindUI:CreateWindow(Config)
 						local Icon
 						if Section.Icon then
 							Icon = Creator.Image(
+								Section.IconSize,
 								Section.Icon,
 								Section.Icon .. ":" .. Section.Title,
 								0,
@@ -6501,6 +6501,7 @@ function WindUI:CreateWindow(Config)
 			local Icon
 			if DialogConfig.Icon then
 				Icon = Creator.Image(
+					DialogConfig.IconSize,
 					DialogConfig.Icon,
 					DialogTable.Title .. ":" .. DialogConfig.Icon,
 					0,

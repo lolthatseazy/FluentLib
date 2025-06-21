@@ -2922,7 +2922,7 @@ function WindUI:CreateWindow(Config)
 
 	-- credits: dawid
 
-	local ConfigManager
+	local ConfigManager, TabModuleMain
 	ConfigManager = {
 		Window = nil,
 		Folder = nil,
@@ -3016,7 +3016,7 @@ function WindUI:CreateWindow(Config)
 
 		return ConfigManager
 	end
-
+	
 	function ConfigManager:CreateConfig(configFilename)
 		local ConfigModule = {
 			Path = "WindUI/" .. ConfigManager.Folder .. "/config/" .. configFilename .. ".json",
@@ -3031,6 +3031,20 @@ function WindUI:CreateWindow(Config)
 		function ConfigModule:Register(Name, Element)
 			ConfigModule.Elements[Name] = Element
 		end
+		
+		function ConfigModule:RegisterAll()
+			for TabName, Tab in pairs(TabModuleMain.Tabs) do
+				if type(Tab) == "table" and rawget(Tab, "__type") == "Tab" then
+					for _, Element in ipairs(Tab.Elements) do
+						local RealTitle = Element.Title or ""
+						local ElementTitle = RealTitle:gsub(" ", ""):gsub("👑", "")
+						local FinalElementName = TabName .. "_" .. Element.__type .. "_" .. ElementTitle
+						
+						ConfigModule.Elements[FinalElementName] = Element
+					end
+				end
+			end
+		end
 
 		function ConfigModule:Save()
 			local saveData = {
@@ -3043,8 +3057,6 @@ function WindUI:CreateWindow(Config)
 				end
 			end
 
-			print(HttpService:JSONEncode(saveData))
-
 			writefile(ConfigModule.Path, HttpService:JSONEncode(saveData))
 		end
 
@@ -3052,7 +3064,7 @@ function WindUI:CreateWindow(Config)
 			if not isfile(ConfigModule.Path) then return false, "Invalid file" end
 
 			local loadData = HttpService:JSONDecode(readfile(ConfigModule.Path))
-
+			
 			for name, data in next, loadData.Elements do
 				if ConfigModule.Elements[name] and ConfigManager.Parser[data.__type] then
 					task.spawn(ConfigManager.Parser[data.__type].Load, ConfigModule.Elements[name], data)
@@ -4187,7 +4199,7 @@ function WindUI:CreateWindow(Config)
 		local CreateScrollSlider = UI.ScrollSlider
 
 
-		local TabModuleMain = {
+		TabModuleMain = {
 			Window = nil,
 			WindUI = nil,
 			Tabs = {}, 

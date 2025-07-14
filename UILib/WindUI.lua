@@ -4553,6 +4553,8 @@ function WindUI:CreateWindow(Config)
 						function Keybind:Set(v)
 							Keybind.Value = v
 							Keybind.UIElements.Keybind.Frame.Frame.TextLabel.Text = v
+							
+							Creator.SafeCallback(Keybind.Callback, Keybind.Value)
 						end
 
 						if Keybind.Locked then
@@ -5019,6 +5021,8 @@ function WindUI:CreateWindow(Config)
 
 								RecalculateCanvasSize()
 								RecalculateListSize()
+								
+								Callback()
 							end
 						end
 

@@ -260,9 +260,9 @@ NormalCreator = (function(...)
 		--     end
 		-- end
 		local Image = Creator.New(isButton and "ImageButton" or "ImageLabel", {
-			Image = Type == "Squircle" and "rbxassetid://80999662900595"
-				or Type == "SquircleOutline" and "rbxassetid://117788349049947" 
-				or Type == "Shadow-sm" and "rbxassetid://84825982946844"
+			Image = Type == "Squircle" and "rbxassetid://85805932203780"
+				or Type == "SquircleOutline" and "rbxassetid://79757452150325" 
+				or Type == "Shadow-sm" and "rbxassetid://139662887329118"
 				or Type == "Squircle-TL-TR" and "rbxassetid://73569156276236",
 			ScaleType = "Slice",
 			SliceCenter = Type ~= "Shadow-sm" and Rect.new(
@@ -1484,7 +1484,7 @@ NormalUI = (function(...)
 					Size = UDim2.new(0,ToolTipModule.ToolTipSize,0,ToolTipModule.ToolTipSize/2),
 					BackgroundTransparency = 1,
 					Rotation = 180,
-					Image = "rbxassetid://89524607682719",
+					Image = "rbxassetid://131918670159824",
 					ThemeTag = {
 						ImageColor3 = "Accent",
 					},
@@ -1494,7 +1494,7 @@ NormalUI = (function(...)
 						BackgroundTransparency = 1,
 						LayoutOrder = 99,
 						ImageTransparency = .9,
-						Image = "rbxassetid://89524607682719",
+						Image = "rbxassetid://131918670159824",
 						ThemeTag = {
 							ImageColor3 = "Text",
 						},
@@ -1688,7 +1688,7 @@ NormalUI = (function(...)
 					New("ImageLabel", {
 						Size = UDim2.new(0,18,0,18),
 						BackgroundTransparency = 1,
-						Image = "rbxassetid://132464694294269", -- luau logo
+						Image = "rbxassetid://102403664289366", -- luau logo
 						-- ThemeTag = {
 						--     ImageColor3 = "Icon",
 						-- },
@@ -2863,7 +2863,7 @@ function WindUI:CreateWindow(Config)
 			New("ImageLabel", {
 				Size = UDim2.new(0,48*2,0,48*2),
 				BackgroundTransparency = 1,
-				Image = "rbxassetid://120997033468887",
+				Image = "rbxassetid://72649237620176",
 				Position = UDim2.new(0.5,-16,0.5,-16),
 				AnchorPoint = Vector2.new(0.5,0.5),
 				ImageTransparency = 1, -- .8; .35
@@ -2997,7 +2997,7 @@ function WindUI:CreateWindow(Config)
 		})
 
 		local Blur = New("ImageLabel", {
-			Image = "rbxassetid://8992230677",
+			Image = "rbxassetid://81273610672268",
 			ImageColor3 = Color3.new(0,0,0),
 			ImageTransparency = 1, -- 0.7
 			Size = UDim2.new(1,120,1,116),
@@ -5249,7 +5249,7 @@ function WindUI:CreateWindow(Config)
 						Colorpicker.UIElements.SatVibMap = New("ImageLabel", {
 							Size = UDim2.fromOffset(160, 182-24),
 							Position = UDim2.fromOffset(0, 40),
-							Image = "rbxassetid://4155801252",
+							Image = "rbxassetid://78352573121806",
 							BackgroundColor3 = Color3.fromHSV(Hue, 1, 1),
 							BackgroundTransparency = 0,
 							Parent = ColorpickerFrame.UIElements.Main,
@@ -5595,7 +5595,7 @@ function WindUI:CreateWindow(Config)
 									CornerRadius = UDim.new(1, 0),
 								}),
 								New("ImageLabel", {
-									Image = "rbxassetid://14204231522",
+									Image = "rbxassetid://139109456610417",
 									ImageTransparency = 0.45,
 									ScaleType = Enum.ScaleType.Tile,
 									TileSize = UDim2.fromOffset(40, 40),

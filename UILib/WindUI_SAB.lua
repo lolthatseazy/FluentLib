@@ -384,12 +384,7 @@ NormalCreator = (function(...)
 		end
 	end
 
-	function Creator.Image(CustomSize, Img, Name, Corner, Type, IsThemeTag, Themed)
-		if true then
-			warn("Creator.Image has been disabled!")
-			return Creator
-		end
-		
+	function Creator.Image(CustomSize, Img, Name, Corner, Type, IsThemeTag, Themed)		
 		local function SanitizeFilename(str)
 			str = str:gsub("[%s/\\:*?\"<>|]+", "-")
 			str = str:gsub("[^%w%-_%.]", "")

@@ -2733,6 +2733,10 @@ function WindUI:CreateWindow(Config)
 	end
 
 	function ConfigManager:CreateConfig(configFilename)
+		if not isfolder(ConfigManager.Folder .. "/config") then
+			makefolder(ConfigManager.Folder .. "/config")
+		end
+		
 		local ConfigModule = {
 			Path = ConfigManager.Folder .. "/config/" .. configFilename .. ".json",
 

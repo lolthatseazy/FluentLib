@@ -67,6 +67,7 @@ NormalCreator = (function(...)
 		Signals = {},
 		Objects = {},
 		FontObjects = {},
+		Toggles = {},
 		ValidExtensions = {".png", ".jpg", ".webp"},
 		Request = Request,
 		DefaultProperties = {
@@ -132,7 +133,7 @@ NormalCreator = (function(...)
 	function Creator.Init(WindUI)
 		Creator.WindUI = WindUI
 	end
-	
+
 	function Creator.AddSignal(Signal, Function)
 		table.insert(Creator.Signals, Signal:Connect(Function))
 	end
@@ -1194,6 +1195,8 @@ NormalUI = (function(...)
 			--Toggled = not Toggled
 		end
 
+		table.insert(Creator.Toggles, Toggle)
+
 		return ToggleFrame, Toggle
 	end
 
@@ -1271,7 +1274,7 @@ NormalUI = (function(...)
 					ImageTransparency = 1,
 				}):Play()
 			end
-			
+
 			if Callback then
 				task.spawn(Creator.SafeCallback, Callback, Toggled)
 			end
@@ -1428,7 +1431,7 @@ NormalUI = (function(...)
 
 		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteWindowSize"), UpdateSizeAndPos)
 		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("AbsoluteCanvasSize"), UpdateSizeAndPos)
-		
+
 		Creator.AddSignal(ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"), function()
 			if not isDragging then
 				updateThumbPosition()
@@ -2731,7 +2734,7 @@ function WindUI:CreateWindow(Config)
 
 		return ConfigManager
 	end
-	
+
 	function ConfigManager:CreateConfig(configFilename)
 		local ConfigModule = {
 			Path = ConfigManager.Folder .. "/config/" .. configFilename .. ".json",
@@ -2746,7 +2749,7 @@ function WindUI:CreateWindow(Config)
 		function ConfigModule:Register(Name, Element)
 			ConfigModule.Elements[Name] = Element
 		end
-		
+
 		function ConfigModule:RegisterAll()
 			for TabName, Tab in pairs(TabModuleMain.Tabs) do
 				if type(Tab) == "table" and rawget(Tab, "__type") == "Tab" then
@@ -2754,13 +2757,13 @@ function WindUI:CreateWindow(Config)
 						local RealTitle = Element.Title or ""
 						local ElementTitle = RealTitle:gsub(" ", ""):gsub("👑", "")
 						local FinalElementName = TabName .. "_" .. Element.__type .. "_" .. ElementTitle
-						
+
 						ConfigModule.Elements[FinalElementName] = Element
 					end
 				end
 			end
 		end
-		
+
 		function ConfigModule:Save()
 			local saveData = {
 				Elements = {}
@@ -2779,7 +2782,7 @@ function WindUI:CreateWindow(Config)
 			if not isfile(ConfigModule.Path) then return false, "Invalid file" end
 
 			local loadData = HttpService:JSONDecode(readfile(ConfigModule.Path))
-			
+
 			for name, data in next, loadData.Elements do
 				if ConfigModule.Elements[name] and ConfigManager.Parser[data.__type] then
 					task.spawn(ConfigManager.Parser[data.__type].Load, ConfigModule.Elements[name], data)
@@ -2787,7 +2790,7 @@ function WindUI:CreateWindow(Config)
 			end
 
 		end
-		
+
 		ConfigManager.Configs[configFilename] = ConfigModule
 
 		return ConfigModule
@@ -2851,7 +2854,7 @@ function WindUI:CreateWindow(Config)
 		})
 
 		Window.ConfigManager = ConfigManager:Init(Window)
-		
+
 		local ResizeHandle = New("Frame", {
 			Size = UDim2.new(0,32,0,32),
 			Position = UDim2.new(1,0,1,0),
@@ -3768,7 +3771,7 @@ function WindUI:CreateWindow(Config)
 		function Window:OnDestroy(func)
 			Window.OnDestroyCallback = func
 		end
-		
+
 		function Window:ToggleTransparency(Value)
 			-- Config.Transparent = Value
 			Window.Transparent = Value
@@ -4283,6 +4286,8 @@ function WindUI:CreateWindow(Config)
 						Creator.AddSignal(Toggle.ToggleFrame.UIElements.Main.MouseButton1Click, function()
 							Toggle:Set(not Toggled)
 						end)
+						
+						table.insert(Creator.Toggles, Toggle)
 
 						return Toggle.__type, Toggle
 					end
@@ -4553,7 +4558,7 @@ function WindUI:CreateWindow(Config)
 						function Keybind:Set(v)
 							Keybind.Value = v
 							Keybind.UIElements.Keybind.Frame.Frame.TextLabel.Text = v
-							
+
 							Creator.SafeCallback(Keybind.Callback, Keybind.Value)
 						end
 
@@ -4662,7 +4667,7 @@ function WindUI:CreateWindow(Config)
 						InputComponent = CreateInput(Input.PlaceholderText, Input.InputIcon, Input.InputFrame.UIElements.Container, Input.Type, function(v)
 							Input:Set(v)
 						end)
-						
+
 						InputComponent.Size = UDim2.new(1,0,0,Input.Type == "Input" and 42 or 42+56+50)
 
 						New("UIScale", {
@@ -5021,7 +5026,7 @@ function WindUI:CreateWindow(Config)
 
 								RecalculateCanvasSize()
 								RecalculateListSize()
-								
+
 								Callback()
 							end
 						end
@@ -6801,7 +6806,7 @@ function WindUI:CreateWindow(Config)
 					end
 					return results
 				end
-				
+
 				function SearchBarModule:Open()
 					task.spawn(function()
 						SearchFrame.Frame.Visible = true

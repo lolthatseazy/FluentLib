@@ -1,7 +1,7 @@
 -- I have no idea who made this but i aint the owner of this script
 
 local DesyncLib = {
-	ServerPos = CFrame.new(0,0,0)
+	ServerPos = CFrame.new(0,0,0),
 	Enabled = false,
 }
 

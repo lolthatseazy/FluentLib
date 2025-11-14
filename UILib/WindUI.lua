@@ -47,7 +47,7 @@ NormalCreator = (function(...)
 			return error("[WindUI]: Failed to find Icons Lib")
 		end
 	else
-		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main.lua"))
+		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"))
 		if type(IconsFunction) == "function" then
 			Icons = IconsFunction()
 		else

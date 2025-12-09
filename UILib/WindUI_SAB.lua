@@ -47,7 +47,7 @@ NormalCreator = (function(...)
 			return error("[WindUI]: Failed to find Icons Lib")
 		end
 	else
-		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"))
+		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/3cb5d51beee5c36d2a868f2e761dc272eb2a466b/Main-v2.lua"))
 		if type(IconsFunction) == "function" then
 			Icons = IconsFunction()
 		else
@@ -2736,7 +2736,7 @@ function WindUI:CreateWindow(Config)
 		if not isfolder(ConfigManager.Folder .. "/config") then
 			makefolder(ConfigManager.Folder .. "/config")
 		end
-		
+
 		local ConfigModule = {
 			Path = ConfigManager.Folder .. "/config/" .. configFilename .. ".json",
 

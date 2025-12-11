@@ -2874,7 +2874,7 @@ function WindUI:CreateWindow(Config)
 				ImageTransparency = 1, -- .8; .35
 			})
 		})
-		print(Creator.Icon("expand")[2], Creator.Icon("expand")[1], Creator.Icon("expand")[2])
+		
 		local FullScreenIcon = Creator.NewRoundFrame(Window.UICorner, "Squircle", {
 			Size = UDim2.new(1,0,1,0),
 			ImageTransparency = 1, -- .65
@@ -7023,3 +7023,4 @@ function WindUI:CreateWindow(Config)
 end
 
 return WindUI
+

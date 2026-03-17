@@ -3,6 +3,6 @@
     "58985e184a651e62514101b9712a0cd199151a3a", -- Rethix
     "830d6706e1f9ca204e695e9dab0a6d3bb38487ce", -- Mateymate
     "c35767c2803d808c61c34a2008c871bae736eab4", -- Sander
-    "d764b79b799bd8c1a1a50f1bcc7eb59ac4f9d777", -- 3than
+    "e060758c57c9311c9654c0ad99155f4752525482", -- 3than
     "4acc8375d90bfcb92f968c5b3c9c6e195fdfef32", -- LCSO
 }

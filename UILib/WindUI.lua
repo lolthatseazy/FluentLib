@@ -47,13 +47,247 @@ NormalCreator = (function(...)
 			return error("[WindUI]: Failed to find Icons Lib")
 		end
 	else
-		local IconsFunction, LoadError = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/3cb5d51beee5c36d2a868f2e761dc272eb2a466b/Main-v2.lua"))
-		if type(IconsFunction) == "function" then
-			Icons = IconsFunction()
+		-- This is a new version
+		
+		if not isfile("WindUI/lucideicons.lua") or not loadstring(readfile("WindUI/lucideicons.lua")) then
+			local Text = game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua")
+			writefile("WindUI/lucideicons.lua", Text)
 		else
-			LocalPlayer:Kick("[WindUI]: Failed to load icons (Check Console for more info).")
-			return warn(LoadError)
+			task.spawn(function()
+				writefile("WindUI/lucideicons.lua", game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"))
+			end)
 		end
+		if not isfile("WindUI/crafticons.lua") or not loadstring(readfile("WindUI/crafticons.lua")) then
+			local Text = game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/craft/dist/Icons.lua")
+			writefile("WindUI/crafticons.lua", Text)
+		else
+			task.spawn(function()
+				writefile("WindUI/crafticons.lua", game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/craft/dist/Icons.lua"))
+			end)
+		end
+		if not isfile("WindUI/geisticons.lua") or not loadstring(readfile("WindUI/geisticons.lua")) then
+			local Text = game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/geist/dist/Icons.lua")
+			writefile("WindUI/geisticons.lua", Text)
+		else
+			task.spawn(function()
+				writefile("WindUI/geisticons.lua", game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/geist/dist/Icons.lua"))
+			end)
+		end
+		if not isfile("WindUI/sfsymbolscons.lua") or not loadstring(readfile("WindUI/sfsymbolscons.lua")) then
+			local Text = game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/sfsymbols/dist/Icons.lua")
+			writefile("WindUI/sfsymbolscons.lua", Text)
+		else
+			task.spawn(function()
+				writefile("WindUI/sfsymbolscons.lua", game:HttpGetAsync("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/sfsymbols/dist/Icons.lua"))
+			end)
+		end
+		
+		local IconModule = {
+			IconsType = "lucide",
+
+			New = nil,
+			IconThemeTag = nil,
+
+			Icons = {
+				["lucide"] = loadstring(readfile("WindUI/lucideicons.lua"))(),
+				["craft"] = loadstring(readfile("WindUI/crafticons.lua"))(),
+				["geist"] = loadstring(readfile("WindUI/geisticons.lua"))(),
+				["sfsymbols"] = loadstring(readfile("WindUI/sfsymbolscons.lua"))(),
+			},
+		}
+
+		local function parseIconString(iconString)
+			if type(iconString) == "string" then  
+				local splitIndex = iconString:find(":")
+				if splitIndex then
+					local iconType = iconString:sub(1, splitIndex - 1)
+					local iconName = iconString:sub(splitIndex + 1)
+					return iconType, iconName
+				end
+			end
+			return nil, iconString
+		end
+
+		function IconModule.AddIcons(packName, iconsData)
+			if type(packName) ~= "string" or type(iconsData) ~= "table" then
+				error("AddIcons: packName must be string, iconsData must be table")
+				return
+			end
+
+			if not IconModule.Icons[packName] then
+				IconModule.Icons[packName] = {
+					Icons = {},
+					Spritesheets = {}
+				}
+			end
+
+			for iconName, iconValue in pairs(iconsData) do
+				if type(iconValue) == "number" or (type(iconValue) == "string" and iconValue:match("^rbxassetid://")) then
+					local imageId = iconValue
+					if type(iconValue) == "number" then
+						imageId = "rbxassetid://" .. tostring(iconValue)
+					end
+
+					IconModule.Icons[packName].Icons[iconName] = {
+						Image = imageId,
+						ImageRectSize = Vector2.new(0, 0),
+						ImageRectPosition = Vector2.new(0, 0),
+						Parts = nil
+					}
+					IconModule.Icons[packName].Spritesheets[imageId] = imageId
+
+				elseif type(iconValue) == "table" then
+					if iconValue.Image and iconValue.ImageRectSize and iconValue.ImageRectPosition then
+						local imageId = iconValue.Image
+						if type(imageId) == "number" then
+							imageId = "rbxassetid://" .. tostring(imageId)
+						end
+
+						IconModule.Icons[packName].Icons[iconName] = {
+							Image = imageId,
+							ImageRectSize = iconValue.ImageRectSize,
+							ImageRectPosition = iconValue.ImageRectPosition,
+							Parts = iconValue.Parts
+						}
+
+						if not IconModule.Icons[packName].Spritesheets[imageId] then
+							IconModule.Icons[packName].Spritesheets[imageId] = imageId
+						end
+					else
+						warn("AddIcons: Invalid spritesheet data format for icon '" .. iconName .. "'")
+					end
+				else
+					warn("AddIcons: Unsupported data type for icon '" .. iconName .. "': " .. type(iconValue))
+				end
+			end
+		end
+
+		function IconModule.SetIconsType(iconType)  
+			IconModule.IconsType = iconType  
+		end  
+
+		function IconModule.Init(New, IconThemeTag)  
+			IconModule.New = New  
+			IconModule.IconThemeTag = IconThemeTag  
+
+			return IconModule  
+		end  
+
+		function IconModule.Icon(Icon, Type, DefaultFormat)  
+			local iconType, iconName = parseIconString(Icon)  
+
+			local targetType = iconType or Type or IconModule.IconsType  
+			local targetName = iconName  
+
+			local iconSet = IconModule.Icons[targetType]  
+
+			if iconSet and iconSet.Icons and iconSet.Icons[targetName] then  
+				return {   
+					iconSet.Spritesheets[tostring(iconSet.Icons[targetName].Image)],   
+					iconSet.Icons[targetName],  
+				}  
+			elseif iconSet and iconSet[targetName] and string.find(iconSet[targetName], "rbxassetid://") then
+				return { 
+					iconSet[targetName], 
+					{ ImageRectSize = Vector2.new(0,0), ImageRectPosition = Vector2.new(0,0) }
+				}
+			end  
+			return nil  
+		end  
+
+		function IconModule.Image(IconConfig)  
+			local Icon = {  
+				Icon = IconConfig.Icon or nil,  
+				Type = IconConfig.Type,  
+				Colors = IconConfig.Colors or { ( IconModule.IconThemeTag or Color3.new(1,1,1) ), Color3.new(1,1,1) },  
+				Size = IconConfig.Size or UDim2.new(0,24,0,24),  
+
+				IconFrame = nil,  
+			}  
+
+			local Colors = {}  
+
+			for _, color in next, Icon.Colors do  
+				Colors[_] = {  
+					ThemeTag = typeof(color) == "string" and color,  
+					Color = typeof(color) == "Color3" and color,  
+				}  
+			end  
+
+			local IconLabel = IconModule.Icon(Icon.Icon, Icon.Type)  
+			local isrbxassetid = typeof(IconLabel) == "string" and string.find(IconLabel, 'rbxassetid://')
+
+			if IconModule.New then  
+				local New = IconModule.New  
+
+
+
+				local IconFrame = New("ImageLabel", {  
+					Size = Icon.Size,  
+					BackgroundTransparency = 1,  
+					ImageColor3 = Colors[1].Color or nil,  
+					ThemeTag = Colors[1].ThemeTag and {  
+						ImageColor3 = Colors[1].ThemeTag  
+					},  
+					Image = isrbxassetid and IconLabel or IconLabel[1],  
+					ImageRectSize = isrbxassetid and nil or IconLabel[2].ImageRectSize,  
+					ImageRectOffset = isrbxassetid and nil or IconLabel[2].ImageRectPosition,  
+				})  
+
+
+				if not isrbxassetid and IconLabel[2].Parts then  
+					for _, part in next, IconLabel[2].Parts do  
+						local IconPartLabel = IconModule.Icon(part, Icon.Type)  
+
+						local IconPart = New("ImageLabel", {  
+							Size = UDim2.new(1,0,1,0),  
+							BackgroundTransparency = 1,  
+							ImageColor3 = Colors[1 + _].Color or nil,  
+							ThemeTag = Colors[1 + _].ThemeTag and {  
+								ImageColor3 = Colors[1 + _].ThemeTag  
+							},  
+							Image = IconPartLabel[1],  
+							ImageRectSize = IconPartLabel[2].ImageRectSize,  
+							ImageRectOffset = IconPartLabel[2].ImageRectPosition,  
+							Parent = IconFrame,  
+						})  
+					end  
+				end  
+
+				Icon.IconFrame = IconFrame  
+			else  
+				local IconFrame = Instance.new("ImageLabel")  
+				IconFrame.Size = Icon.Size  
+				IconFrame.BackgroundTransparency = 1  
+				IconFrame.ImageColor3 = Colors[1].Color  
+				IconFrame.Image = isrbxassetid and IconLabel or IconLabel[1]  
+				IconFrame.ImageRectSize = isrbxassetid and nil or IconLabel[2].ImageRectSize  
+				IconFrame.ImageRectOffset = isrbxassetid and nil or IconLabel[2].ImageRectPosition  
+
+
+				if not isrbxassetid and IconLabel[2].Parts then  
+					for _, part in next, IconLabel[2].Parts do  
+						local IconPartLabel = IconModule.Icon(part, Icon.Type)  
+
+						local IconPart = Instance.New("ImageLabel")  
+						IconPart.Size = UDim2.new(1,0,1,0)  
+						IconPart.BackgroundTransparency = 1  
+						IconPart.ImageColor3 = Colors[1 + _].Color  
+						IconPart.Image = IconPartLabel[1]  
+						IconPart.ImageRectSize = IconPartLabel[2].ImageRectSize  
+						IconPart.ImageRectOffset = IconPartLabel[2].ImageRectPosition  
+						IconPart.Parent = IconFrame  
+					end  
+				end  
+
+				Icon.IconFrame = IconFrame  
+			end  
+
+
+			return Icon  
+		end
+		
+		Icons = IconModule
 	end
 
 	Icons.SetIconsType("lucide")
@@ -437,7 +671,7 @@ NormalCreator = (function(...)
 						return
 					end
 				end
-
+				
 				local response = Creator.Request({
 					Url = Img,
 					Method = "GET",
@@ -1950,10 +2184,13 @@ NormalElement = (function()
 			end
 		end
 
-
-		-- function Element:Show()
-
-		-- end
+		function Element:Show()
+			Element.UIElements.Main.Visible = true
+		end
+		
+		function Element:Hide()
+			Element.UIElements.Main.Visible = false
+		end
 
 		function Element:Destroy()
 			Element.UIElements.Main:Destroy()
@@ -2874,7 +3111,7 @@ function WindUI:CreateWindow(Config)
 				ImageTransparency = 1, -- .8; .35
 			})
 		})
-		
+		print(Creator.Icon("expand")[2], Creator.Icon("expand")[1], Creator.Icon("expand")[2])
 		local FullScreenIcon = Creator.NewRoundFrame(Window.UICorner, "Squircle", {
 			Size = UDim2.new(1,0,1,0),
 			ImageTransparency = 1, -- .65
@@ -7023,4 +7260,3 @@ function WindUI:CreateWindow(Config)
 end
 
 return WindUI
-

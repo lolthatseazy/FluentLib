@@ -32,7 +32,9 @@ end
 RunService:BindToRenderStep("Desync", Enum.RenderPriority.First.Value, function()
 	if not DesyncLib.Enabled or not RootPart or not Head then return end
 
-	Desync.Real.CFrame = RootPart.CFrame
+	if Desync.Sent.Position ~= RootPart.Position then
+		Desync.Real.CFrame = RootPart.CFrame
+	end
 
 	RootPart.CFrame = Desync.Real.CFrame or RootPart.CFrame
 	RootPart.Velocity = Desync.Real.Velocity or RootPart.Velocity

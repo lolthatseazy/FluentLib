@@ -1,5 +1,6 @@
 -- ERX player ESP, based on skibidihook's EspLibrary.
 -- The embedded font was removed; ERX uses the player renderer.
+-- Full credits to: sigma (0v92 on discord) i did not make any of this
 
 local CloneRef = cloneref or function(...) return ... end
 local Workspace = CloneRef(game:GetService("Workspace"))

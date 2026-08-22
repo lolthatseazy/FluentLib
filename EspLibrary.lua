@@ -255,13 +255,22 @@ do
             Drawings.BoxState = State
             local CornerVisible = State == "corner"
             local FullVisible   = State == "full"
-            for Index = 1, 8 do
-                CornersLines[Index].Visible    = CornerVisible
-                CornersOutlines[Index].Visible = CornerVisible
-            end
-            for Index = 1, 4 do
-                FullLines[Index].Visible    = FullVisible
-                FullOutlines[Index].Visible = FullVisible
+            if Drawings.SharedBox then
+                local VisibleCount = CornerVisible and 8 or FullVisible and 4 or 0
+                for Index = 1, 8 do
+                    local Visible = Index <= VisibleCount
+                    CornersLines[Index].Visible = Visible
+                    CornersOutlines[Index].Visible = Visible
+                end
+            else
+                for Index = 1, 8 do
+                    CornersLines[Index].Visible    = CornerVisible
+                    CornersOutlines[Index].Visible = CornerVisible
+                end
+                for Index = 1, 4 do
+                    FullLines[Index].Visible    = FullVisible
+                    FullOutlines[Index].Visible = FullVisible
+                end
             end
         end
         if State == "hidden" then return end
@@ -944,22 +953,27 @@ do
     function ObjectEsp:CreateDrawingCache()
         local AllDrawings = {}
         local Cfg = EspLibrary.Config
-        local Drawings = {
-            BoxOutline = CreateDrawing("Square", {
+        local BoxLines = {}
+        local BoxOutlines = {}
+        for Index = 1, 8 do
+            BoxOutlines[Index] = CreateDrawing("Line", {
                 Visible = false,
-                Filled = false,
                 Thickness = Cfg.BoxOutlineThickness,
                 Transparency = Cfg.BoxOutlineTransparency,
                 Color = ColorBlack,
                 ZIndex = BaseZIndex,
-            }, AllDrawings),
-            Box = CreateDrawing("Square", {
+            }, AllDrawings)
+            BoxLines[Index] = CreateDrawing("Line", {
                 Visible = false,
-                Filled = false,
                 Thickness = 1,
                 Color = ColorWhite,
                 ZIndex = BaseZIndex + 1,
-            }, AllDrawings),
+            }, AllDrawings)
+        end
+        local Drawings = {
+            Corners = {Lines = BoxLines, Outlines = BoxOutlines},
+            FullBox = {Lines = BoxLines, Outlines = BoxOutlines},
+            SharedBox = true,
             Name = CreateDrawing("Text", {
                 Visible = false,
                 Center = true,
@@ -986,6 +1000,7 @@ do
             }, AllDrawings),
         }
         Drawings.All = AllDrawings
+        Drawings.BoxState = "hidden"
         Drawings.OutlineT = Cfg.BoxOutlineTransparency
         Drawings.OutlineTh = Cfg.BoxOutlineThickness
         Drawings.TextSize = Cfg.TextSize
@@ -1079,9 +1094,11 @@ do
     function ObjectEsp:SetColor(Color)
         self.Color = Color or ColorWhite
         if not self.Drawings then return end
-        self.Drawings.Box.Color = self.Color
         self.Drawings.Name.Color = self.Color
         self.Drawings.Distance.Color = self.Color
+        for Index = 1, 8 do
+            self.Drawings.Corners.Lines[Index].Color = self.Color
+        end
     end
 
     function ObjectEsp:SetLabel(Label)
@@ -1132,22 +1149,7 @@ do
         BoxPosition = Vector2New(Left, Top)
         BoxSize = Vector2New(Width, Height)
 
-        local ShowBox = Settings.Box
-        Drawings.BoxOutline.Visible = ShowBox
-        Drawings.Box.Visible = ShowBox
-        if ShowBox then
-            Drawings.BoxOutline.Position = BoxPosition
-            Drawings.BoxOutline.Size = BoxSize
-            Drawings.Box.Position = BoxPosition
-            Drawings.Box.Size = BoxSize
-        end
-
-        if Drawings.OutlineT ~= Cfg.BoxOutlineTransparency or Drawings.OutlineTh ~= Cfg.BoxOutlineThickness then
-            Drawings.OutlineT = Cfg.BoxOutlineTransparency
-            Drawings.OutlineTh = Cfg.BoxOutlineThickness
-            Drawings.BoxOutline.Transparency = Cfg.BoxOutlineTransparency
-            Drawings.BoxOutline.Thickness = Cfg.BoxOutlineThickness
-        end
+        RenderCharacterBox(Drawings, BoxPosition, BoxSize, Settings.Box, "corner")
         if Drawings.TextSize ~= Cfg.TextSize or Drawings.Font ~= Cfg.Font then
             Drawings.TextSize = Cfg.TextSize
             Drawings.Font = Cfg.Font

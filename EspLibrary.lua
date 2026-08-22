@@ -1,5 +1,3 @@
--- ERX player ESP, based on skibidihook's EspLibrary.
--- The embedded font was removed; ERX uses the player renderer.
 -- Full credits to: sigma (0v92 on discord) i did not make any of this
 
 local CloneRef = cloneref or function(...) return ... end
@@ -91,6 +89,7 @@ local BaseZIndex = 1
 local EspLibrary = {}
 
 EspLibrary.Enabled = true
+EspLibrary.ObjectsEnabled = false
 
 EspLibrary.Config = {
     Font               = GlobalFont,
@@ -209,6 +208,32 @@ do
     local SetLinePair = function(Outline, Line, FromV, ToV)
         Outline.From, Outline.To = FromV, ToV
         Line.From, Line.To = FromV, ToV
+    end
+
+    local GetProjectedBounds = function(BoundsCFrame, BoundsSize)
+        local HalfX, HalfY, HalfZ = BoundsSize.X * 0.5, BoundsSize.Y * 0.5, BoundsSize.Z * 0.5
+        local MinX, MinY = MathHuge, MathHuge
+        local MaxX, MaxY = -MathHuge, -MathHuge
+        local FrontCorners = 0
+
+        for X = -1, 1, 2 do
+            for Y = -1, 1, 2 do
+                for Z = -1, 1, 2 do
+                    local WorldPosition = BoundsCFrame:PointToWorldSpace(Vector3New(HalfX * X, HalfY * Y, HalfZ * Z))
+                    local ScreenPosition = WorldToViewportPoint(CurrentCamera, WorldPosition)
+                    if ScreenPosition.Z > 0 then
+                        FrontCorners += 1
+                        if ScreenPosition.X < MinX then MinX = ScreenPosition.X end
+                        if ScreenPosition.Y < MinY then MinY = ScreenPosition.Y end
+                        if ScreenPosition.X > MaxX then MaxX = ScreenPosition.X end
+                        if ScreenPosition.Y > MaxY then MaxY = ScreenPosition.Y end
+                    end
+                end
+            end
+        end
+
+        if FrontCorners ~= 8 or MaxX <= MinX or MaxY <= MinY then return nil, nil end
+        return Vector2New(MinX, MinY), Vector2New(MaxX - MinX, MaxY - MinY)
     end
 
     local RenderCharacterBox = function(Drawings, BoxPos2D, BoxSize2D, BoxSettings, DefaultMode)
@@ -910,12 +935,256 @@ do
         self:RenderFlags(Center2D, Offset, Settings.Flags)
     end
 
+    local ObjectEsp = {
+        ObjectCache = {},
+        DrawingCache = {},
+    }
+    ObjectEsp.__index = ObjectEsp
+
+    function ObjectEsp:CreateDrawingCache()
+        local AllDrawings = {}
+        local Cfg = EspLibrary.Config
+        local Drawings = {
+            BoxOutline = CreateDrawing("Square", {
+                Visible = false,
+                Filled = false,
+                Thickness = Cfg.BoxOutlineThickness,
+                Transparency = Cfg.BoxOutlineTransparency,
+                Color = ColorBlack,
+                ZIndex = BaseZIndex,
+            }, AllDrawings),
+            Box = CreateDrawing("Square", {
+                Visible = false,
+                Filled = false,
+                Thickness = 1,
+                Color = ColorWhite,
+                ZIndex = BaseZIndex + 1,
+            }, AllDrawings),
+            Name = CreateDrawing("Text", {
+                Visible = false,
+                Center = true,
+                Outline = true,
+                OutlineColor = ColorBlack,
+                Color = ColorWhite,
+                Transparency = 1,
+                Size = Cfg.TextSize,
+                Text = "",
+                Font = Cfg.Font,
+                ZIndex = BaseZIndex + 1,
+            }, AllDrawings),
+            Distance = CreateDrawing("Text", {
+                Visible = false,
+                Center = true,
+                Outline = true,
+                OutlineColor = ColorBlack,
+                Color = ColorWhite,
+                Transparency = 1,
+                Size = Cfg.TextSize,
+                Text = "",
+                Font = Cfg.Font,
+                ZIndex = BaseZIndex + 1,
+            }, AllDrawings),
+        }
+        Drawings.All = AllDrawings
+        Drawings.OutlineT = Cfg.BoxOutlineTransparency
+        Drawings.OutlineTh = Cfg.BoxOutlineThickness
+        Drawings.TextSize = Cfg.TextSize
+        Drawings.Font = Cfg.Font
+        self.Drawings = Drawings
+        self.AllDrawings = AllDrawings
+    end
+
+    ObjectEsp.New = function(Object, ObjectType, Color)
+        local Existing = ObjectEsp.ObjectCache[Object]
+        if Existing then return Existing end
+
+        local Self = setmetatable({
+            Object = Object,
+            ObjectType = ObjectType or Object.Name,
+            Color = Color or ColorWhite,
+            Connections = {},
+            Parts = nil,
+            RootPart = nil,
+            BoundsStamp = 0,
+            ObjectBoundsStamp = 0,
+            Hidden = false,
+            Label = ObjectType or Object.Name,
+        }, ObjectEsp)
+        local Cache = ObjectEsp.DrawingCache[1]
+        if Cache then
+            TableRemove(ObjectEsp.DrawingCache, 1)
+            Self.Drawings = Cache
+            Self.AllDrawings = Cache.All
+        else
+            Self:CreateDrawingCache()
+        end
+
+        if Object:IsA("Model") then
+            Self.Parts = {}
+            local Descendants = Object:GetDescendants()
+            for Index = 1, #Descendants do
+                local Descendant = Descendants[Index]
+                if Descendant:IsA("BasePart") then
+                    Self.Parts[#Self.Parts + 1] = Descendant
+                    Self.RootPart = Self.RootPart or Descendant
+                end
+            end
+            local MainSafe = Object:FindFirstChild("MainSafe", true)
+            Self.RootPart = Object.PrimaryPart or MainSafe and MainSafe:IsA("BasePart") and MainSafe or Self.RootPart
+            Self.Connections[#Self.Connections + 1] = Object.DescendantAdded:Connect(function(Descendant)
+                if Descendant:IsA("BasePart") then
+                    Self.Parts[#Self.Parts + 1] = Descendant
+                    Self.RootPart = Self.RootPart or Descendant
+                    Self.BoundsStamp = 0
+                    Self.ObjectBoundsStamp = 0
+                end
+            end)
+            Self.Connections[#Self.Connections + 1] = Object.DescendantRemoving:Connect(function(Descendant)
+                RemoveFromParts(Self, Descendant)
+                Self.ObjectBoundsStamp = 0
+                if Self.RootPart == Descendant then
+                    Self.RootPart = Self.Parts[1]
+                end
+            end)
+        elseif Object:IsA("BasePart") then
+            Self.RootPart = Object
+        end
+
+        Self.Connections[#Self.Connections + 1] = Object.AncestryChanged:Connect(function(_, Parent)
+            if not Parent then ObjectEsp.Remove(Object) end
+        end)
+        ObjectEsp.ObjectCache[Object] = Self
+        Self:SetColor(Self.Color)
+        Self:SetLabel(Self.Label)
+        return Self
+    end
+
+    ObjectEsp.Remove = function(Object)
+        local Cache = ObjectEsp.ObjectCache[Object]
+        if Type(Cache) ~= "table" then return end
+        ObjectEsp.ObjectCache[Object] = nil
+        DisconnectAll(Cache.Connections)
+        if Cache.Drawings then
+            HideDrawingSet(Cache.AllDrawings, Cache.Drawings)
+            ObjectEsp.DrawingCache[#ObjectEsp.DrawingCache + 1] = Cache.Drawings
+        end
+    end
+
+    function ObjectEsp:HideDrawings()
+        if self.Hidden then return end
+        self.Hidden = true
+        HideDrawingSet(self.AllDrawings, self.Drawings)
+    end
+
+    function ObjectEsp:SetColor(Color)
+        self.Color = Color or ColorWhite
+        if not self.Drawings then return end
+        self.Drawings.Box.Color = self.Color
+        self.Drawings.Name.Color = self.Color
+        self.Drawings.Distance.Color = self.Color
+    end
+
+    function ObjectEsp:SetLabel(Label)
+        self.Label = tostring(Label or self.ObjectType or "OBJECT")
+        if self.Drawings and self.Drawings.Name.Text ~= self.Label then
+            self.Drawings.Name.Text = self.Label
+        end
+    end
+
+    function ObjectEsp:Loop(Settings, DistanceOverride)
+        if not EspLibrary.ObjectsEnabled then return self:HideDrawings() end
+        local Object = self.Object
+        if not Object or not Object.Parent then return self:HideDrawings() end
+
+        local BoundsCFrame, BoundsSize
+        if Object:IsA("BasePart") then
+            BoundsCFrame, BoundsSize = Object.CFrame, Object.Size
+        else
+            local Now = OsClock()
+            if self.ObjectBoundsSize and Now - self.ObjectBoundsStamp < 0.1 then
+                BoundsCFrame, BoundsSize = self.ObjectBoundsCFrame, self.ObjectBoundsSize
+            else
+                BoundsCFrame, BoundsSize = GetCachedBounds(self, Object)
+                self.ObjectBoundsCFrame = BoundsCFrame
+                self.ObjectBoundsSize = BoundsSize
+                self.ObjectBoundsStamp = Now
+            end
+        end
+        if not BoundsSize then return self:HideDrawings() end
+
+        local ScreenCenter, OnScreen = WorldToViewportPoint(CurrentCamera, BoundsCFrame.Position)
+        if not OnScreen or ScreenCenter.Z <= 0 then return self:HideDrawings() end
+        local BoxPosition, BoxSize = GetProjectedBounds(BoundsCFrame, BoundsSize)
+        if not BoxSize then return self:HideDrawings() end
+
+        self.Hidden = false
+        local Cfg = EspLibrary.Config
+        local Drawings = self.Drawings
+        local PixelSnap = Cfg.PixelSnap
+        local Left, Top = BoxPosition.X, BoxPosition.Y
+        local Width, Height = BoxSize.X, BoxSize.Y
+        if PixelSnap then
+            Left = MathFloor(Left + 0.5)
+            Top = MathFloor(Top + 0.5)
+            Width = MathFloor(Width + 0.5)
+            Height = MathFloor(Height + 0.5)
+        end
+        BoxPosition = Vector2New(Left, Top)
+        BoxSize = Vector2New(Width, Height)
+
+        local ShowBox = Settings.Box
+        Drawings.BoxOutline.Visible = ShowBox
+        Drawings.Box.Visible = ShowBox
+        if ShowBox then
+            Drawings.BoxOutline.Position = BoxPosition
+            Drawings.BoxOutline.Size = BoxSize
+            Drawings.Box.Position = BoxPosition
+            Drawings.Box.Size = BoxSize
+        end
+
+        if Drawings.OutlineT ~= Cfg.BoxOutlineTransparency or Drawings.OutlineTh ~= Cfg.BoxOutlineThickness then
+            Drawings.OutlineT = Cfg.BoxOutlineTransparency
+            Drawings.OutlineTh = Cfg.BoxOutlineThickness
+            Drawings.BoxOutline.Transparency = Cfg.BoxOutlineTransparency
+            Drawings.BoxOutline.Thickness = Cfg.BoxOutlineThickness
+        end
+        if Drawings.TextSize ~= Cfg.TextSize or Drawings.Font ~= Cfg.Font then
+            Drawings.TextSize = Cfg.TextSize
+            Drawings.Font = Cfg.Font
+            Drawings.Name.Size = Cfg.TextSize
+            Drawings.Name.Font = Cfg.Font
+            Drawings.Distance.Size = Cfg.TextSize
+            Drawings.Distance.Font = Cfg.Font
+        end
+
+        Drawings.Name.Visible = Settings.Name
+        if Settings.Name then
+            Drawings.Name.Position = Vector2New(Left + Width * 0.5, Top - Cfg.TextSize - 2)
+        end
+
+        Drawings.Distance.Visible = Settings.Distance
+        if Settings.Distance then
+            local Distance = MathFloor((DistanceOverride or (CurrentCamera.CFrame.Position - BoundsCFrame.Position).Magnitude) + 0.5)
+            local DistanceText = `{Distance} studs`
+            if Drawings.DistanceText ~= DistanceText then
+                Drawings.DistanceText = DistanceText
+                Drawings.Distance.Text = DistanceText
+            end
+            Drawings.Distance.Position = Vector2New(Left + Width * 0.5, Top + Height + 2)
+        end
+    end
+
     EspLibrary.PlayerEsp = PlayerEsp
     EspLibrary.PlayerESP = PlayerEsp
+    EspLibrary.ObjectEsp = ObjectEsp
+    EspLibrary.ObjectESP = ObjectEsp
 
     function EspLibrary:Unload()
         for _, EspInstance in next, PlayerEsp.PlayerCache do
             PlayerEsp.Remove(EspInstance.Player)
+        end
+        for Object in next, ObjectEsp.ObjectCache do
+            ObjectEsp.Remove(Object)
         end
 
         DisconnectAll(LibraryConnections)
@@ -925,8 +1194,14 @@ do
                 DrawingObject:Remove()
             end
         end
+        for Index = 1, #ObjectEsp.DrawingCache do
+            for _, DrawingObject in next, ObjectEsp.DrawingCache[Index].All do
+                DrawingObject:Remove()
+            end
+        end
 
         TableClear(PlayerEsp.DrawingCache)
+        TableClear(ObjectEsp.DrawingCache)
     end
 end
 
